@@ -1,11 +1,11 @@
 import uuid
 from dataclasses import dataclass
 from contextlib import contextmanager
-
 from sqlalchemy import create_engine, Table, MetaData, Column, String, Float, select, insert, update, delete
+from archilog import config
 
-# Créer le moteur et les métadonnées
-engine = create_engine('sqlite:///data.db')
+
+engine = create_engine(config.DATABASE_URL, echo=config.DEBUG)
 metadata = MetaData()
 
 # Définir la table "entries" avec SQLAlchemy Core

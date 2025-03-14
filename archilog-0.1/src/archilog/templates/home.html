@@ -23,9 +23,9 @@
         {% endwith %}
         
         <div style="margin-bottom: 20px;">
-            <a href="{{ url_for('create_entry') }}" class="btn btn-primary">Nouvelle Entrée</a>
-            <a href="{{ url_for('export_csv') }}" class="btn btn-warning">Exporter CSV</a>
-            <form action="{{ url_for('import_csv') }}" method="post" enctype="multipart/form-data" style="display: inline;">
+            <a href="{{ url_for('.create_entry') }}" class="btn btn-primary">Nouvelle Entrée</a>
+            <a href="{{ url_for('.export_csv') }}" class="btn btn-warning">Exporter CSV</a>
+            <form action="{{ url_for('.import_csv') }}" method="post" enctype="multipart/form-data" style="display: inline;">
                 <input type="file" name="csv_file" accept=".csv" required>
                 <button type="submit" class="btn btn-primary">Importer CSV</button>
             </form>
@@ -50,8 +50,8 @@
                             <td>{{ entry.amount }} €</td>
                             <td>{{ entry.category or 'Non spécifiée' }}</td>
                             <td class="actions">
-                                <a href="{{ url_for('update_entry', id=entry.id) }}" class="btn btn-warning">Modifier</a>
-                                <a href="{{ url_for('delete_entry', id=entry.id) }}" class="btn btn-secondary" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée?')">Supprimer</a>
+                                <a href="{{ url_for('web_ui.update_entry', id=entry.id) }}" class="btn btn-warning">Modifier</a>
+                                <a href="{{ url_for('web_ui.delete_entry', id=entry.id) }}" class="btn btn-secondary" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette entrée?')">Supprimer</a>
                             </td>
                         </tr>
                     {% endfor %}
