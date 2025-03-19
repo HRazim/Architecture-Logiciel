@@ -7,6 +7,7 @@ dependencies = [
     "click>=8.1.7",
     "sqlalchemy>=2.0.39",
     "flask>=3.1.0",
+    "flask-wtf>=1.2.2",
 ]
 requires-python = ">=3.10"
 
@@ -24,5 +25,5 @@ build-backend = "pdm.backend"
 
 [tool.pdm.scripts]
 _.env_file = "dev.env"
-start = "flask --app archilog:create_app --debug run"
-init-db = "flask --app archilog:create_app archilog init-db"
+start = "flask --app archilog.views:create_app --debug run"
+init-db = "flask --app archilog.views:create_app archilog init-db"

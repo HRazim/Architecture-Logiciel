@@ -175,7 +175,7 @@ Exemples :
 
 3. Initialisez la base de données:
    ```
-   pdm run flask --app archilog:create_app archilog init-db
+   pdm run flask --app archilog.views:create_app archilog init-db
    ```
 
 ## Utilisation
@@ -184,26 +184,26 @@ Exemples :
 
 ```bash
 # Créer une entrée
-pdm run flask --app archilog:create_app archilog create
+pdm run flask --app archilog.views:create_app archilog create
 # Entrer : name="Salaire", amount=1500, category="Revenus"
 
 # Afficher toutes les entrées
-pdm run flask --app archilog:create_app archilog get-all
+pdm run flask --app archilog.views:create_app archilog get-all
 
 # Exporter au format CSV
-pdm run flask --app archilog:create_app archilog get-all --as-csv > export.csv
+pdm run flask --app archilog.views:create_app archilog get-all --as-csv > export.csv
 
 # Importer depuis un CSV
-pdm run flask --app archilog:create_app archilog import-csv export.csv
+pdm run flask --app archilog.views:create_app archilog import-csv export.csv
 
 # Récupérer une entrée par son ID
-pdm run flask --app archilog:create_app archilog get --id <UUID>
+pdm run flask --app archilog.views:create_app archilog get --id <UUID>
 
 # Mettre à jour une entrée
-pdm run flask --app archilog:create_app archilog update --id <UUID>
+pdm run flask --app archilog.views:create_app archilog update --id <UUID>
 
 # Supprimer une entrée
-pdm run flask --app archilog:create_app archilog delete --id <UUID>
+pdm run flask --app archilog.views:create_app archilog delete --id <UUID>
 ```
 
 ### Interface web
@@ -331,7 +331,7 @@ Utilisation avec PDM dans `pyproject.toml` :
 ```toml
 [tool.pdm.scripts]
 _.env_file = "dev.env"
-start = "flask --app archilog:create_app --debug run"
+start = "flask --app archilog.views:create_app --debug run"
 ```
 
 Intégration dans l'application :
