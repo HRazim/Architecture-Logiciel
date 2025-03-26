@@ -10,7 +10,8 @@ A simple project for educational purpose.
    - [SQLAlchemy Core](#sqlalchemy-core)
    - [Flask](#flask)
    - [Jinja2](#jinja2)
-    - [WTForms](#wtforms)
+   - [WTForms](#wtforms)
+   - [Flask-HTTPAuth](#flask-httpauth)
 3. [Structure du projet](#structure-du-projet)
 4. [Commandes disponibles](#commandes-disponibles)
 5. [Fonctionnalités](#fonctionnalités)
@@ -32,7 +33,13 @@ A simple project for educational purpose.
     - [Types de validation](#types-de-validation)
     - [WTForms](#wtforms)
     - [Logging](#logging)
-11. [Ressources](#ressources)
+11. [Authentification & Autorisation](#authentification--autorisation)
+    - [Workflow d'Authentification](#workflow-dauthentification)
+    - [Contrôle d'Accès Basé sur les Rôles (RBAC)](#contrôle-daccès-basé-sur-les-rôles-rbac)
+    - [Configuration Exemple](#configuration-exemple)
+    - [Protection des Routes](#protection-des-routes)
+    - [Installation](#installation-2)
+12. [Ressources](#ressources)
 
 
 ## Technologies utilisées
@@ -118,6 +125,36 @@ class EntryForm(FlaskForm):
     submit = SubmitField("Enregistrer")
 ```
 
+## Technologies utilisées
+
+### Flask-HTTPAuth
+
+Flask-HTTPAuth est une extension Flask qui simplifie l'implémentation de l'authentification HTTP, en particulier pour les API et les applications web nécessitant un contrôle d'accès sécurisé.
+
+```python
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import generate_password_hash, check_password_hash
+
+auth = HTTPBasicAuth()
+
+users = {
+    "admin": generate_password_hash("admin"),
+    "user": generate_password_hash("user")
+}
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in users and \
+       check_password_hash(users.get(username), password):
+        return username
+```
+
+Exemple d'utilisation :
+
+- Gestion des authentifications basiques
+- Vérification des credentials utilisateurs
+- Contrôle d'accès aux routes basé sur l'authentification
+- Sécurisation des endpoints avec des mécanismes de validation des utilisateurs
 
 ## Structure du projet
 
@@ -483,7 +520,47 @@ def create_entry():
 ## Installation
 
 ```bash
-$ uv add flask-wtf
+$ pdm add flask-wtf
+```
+
+## Authentification & Autorisation
+
+### Définitions
+
+- **Authentification** : Processus de vérification et validation de l'identité des utilisateurs qui tentent d'accéder à l'application.
+- **Autorisation** : Détermination des permissions d'un utilisateur authentifié pour accéder à des ressources ou fonctions spécifiques.
+
+### Workflow d'Authentification
+
+1. **Récupération des identifiants** : L'utilisateur fournit login et mot de passe via une requête HTTP.
+2. **Validation des identifiants** : Comparaison avec les données backend.
+3. **Sécurité des mots de passe** : Utilisation de `werkzeug.security.generate_password_hash` pour le hashage et le salage des mots de passe.
+4. **Gestion des rôles** : Attribution et vérification des permissions basées sur les rôles.
+
+### Contrôle d'Accès Basé sur les Rôles (RBAC)
+
+Deux rôles principaux sont implémentés :
+- **admin** : Accès complet (lecture, création, modification, suppression)
+- **user** : Accès limité en lecture seule
+
+### Protection des Routes
+
+```python
+@web_ui.route('/')
+@auth.login_required
+def home():
+    # Accessible à tous les utilisateurs authentifiés
+
+@web_ui.route('/create', methods=['GET', 'POST'])
+@auth.login_required(role="admin")
+def create_entry():
+    # Réservé aux utilisateurs avec rôle admin
+```
+
+### Installation
+
+```bash
+$ pdm add flask-httpauth
 ```
 
 ## Ressources
@@ -498,4 +575,6 @@ $ uv add flask-wtf
 - Documentation WTForms : https://flask-wtf.readthedocs.io/en/1.2.x/quickstart/
 - Documentation Flask-WTF : https://flask-wtf.readthedocs.io/
 - Validation de formulaires Python : https://wtforms.readthedocs.io/
+- [flask-httpauth Documentation](https://flask-httpauth.readthedocs.io/)
+- [Werkzeug Security Documentation](https://werkzeug.palletsprojects.com/en/3.0.x/utils/#module-werkzeug.security)
 - Cours et exemples : [https://kathode.neocities.org](https://kathode.neocities.org)

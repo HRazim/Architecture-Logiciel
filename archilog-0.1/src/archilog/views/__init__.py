@@ -1,10 +1,12 @@
 from flask import Flask
+from flask_httpauth import HTTPBasicAuth
 
 def create_app():
     """Application factory pour créer l'application Flask"""
     # Configuration du logging
     
     app = Flask(__name__)
+    auth = HTTPBasicAuth()
     
     # Configuration de Flask avec le préfixe ARCHILOG_FLASK
     app.config.from_prefixed_env(prefix="ARCHILOG_FLASK")
