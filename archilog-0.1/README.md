@@ -10,6 +10,7 @@ A simple project for educational purpose.
    - [SQLAlchemy Core](#sqlalchemy-core)
    - [Flask](#flask)
    - [Jinja2](#jinja2)
+    - [WTForms](#wtforms)
 3. [Structure du projet](#structure-du-projet)
 4. [Commandes disponibles](#commandes-disponibles)
 5. [Fonctionnalités](#fonctionnalités)
@@ -27,7 +28,11 @@ A simple project for educational purpose.
    - [Configuration centralisée](#configuration-centralisée)
    - [Utilisation de dotenv](#utilisation-de-dotenv)
    - [Gestion des erreurs](#gestion-des-erreurs)
-10. [Ressources](#ressources)
+10. [Validation & Traçabilité](#validation--traçabilité)
+    - [Types de validation](#types-de-validation)
+    - [WTForms](#wtforms)
+    - [Logging](#logging)
+11. [Ressources](#ressources)
 
 
 ## Technologies utilisées
@@ -94,6 +99,26 @@ Jinja2, intégré à Flask, génère des pages HTML dynamiques en combinant des 
 {% endif %}
 ```
 
+### WTForms
+
+WTForms est une bibliothèque de validation de formulaires pour Flask qui permet de définir et de valider des formulaires de manière robuste.
+
+```python
+from flask_wtf import FlaskForm
+from wtforms import StringField, FloatField, SubmitField
+from wtforms.validators import DataRequired, Optional, NumberRange
+
+class EntryForm(FlaskForm):
+    name = StringField("Nom", validators=[DataRequired(message="Le nom est obligatoire")])
+    amount = FloatField("Montant", validators=[
+        DataRequired(message="Le montant est obligatoire"),
+        NumberRange(min=0, message="Le montant doit être positif")
+    ])
+    category = StringField("Catégorie", validators=[Optional()])
+    submit = SubmitField("Enregistrer")
+```
+
+
 ## Structure du projet
 
 ```
@@ -103,15 +128,10 @@ Jinja2, intégré à Flask, génère des pages HTML dynamiques en combinant des 
 ├── README.md
 └── src
     └── archilog
-        ├── __init__.py           # Application factory et configuration centralisée 
-        ├── blueprints            # Organisation modulaire avec blueprints
-        │   ├── __init__.py
-        │   ├── api.py            # Blueprint pour l'API et CLI
-        │   └── web_ui.py         # Blueprint pour l'interface web
-        ├── error_handlers.py     # Gestionnaires d'erreurs centralisés
-        ├── models.py             # Modèles de données et fonctions d'accès à la BDD
-        ├── services.py           # Services d'import/export CSV
-        ├── static
+        ├── __init__.py           # Configuration centralisée 
+        ├── views                 # Organisation Web modulaire avec blueprints
+        │   ├── __init__.py       # Configuration Web 
+        │   ├── static
         │   └── css
         │       └── style.css     # Styles CSS
         ├── templates
@@ -121,6 +141,14 @@ Jinja2, intégré à Flask, génère des pages HTML dynamiques en combinant des 
         │   │   └── 500.html      # Erreur serveur
         │   ├── home.html         # Page d'accueil
         │   └── update.html       # Formulaire de modification
+        │   ├── api.py            # Blueprint pour l'API et CLI
+        │   ├── error_handlers.py # Gestionnaires d'erreurs centralisés
+        │   ├── forms.py          # Form validation
+        │   └── web_ui.py         # Blueprint pour l'interface web
+        │
+        ├── models.py             # Modèles de données et fonctions d'accès à la BDD
+        ├── services.py           # Services d'import/export CSV
+        
 ```
 
 ## Commandes disponibles
@@ -373,6 +401,91 @@ def error_test():
     abort(500)  # Déclenche une erreur 500
 ```
 
+## Validation & Traçabilité
+
+### Types de validation
+
+Nous utilisons deux types principaux de validation des données :
+
+1. **Validation Syntaxique** : 
+   - Vérification du type de données (date, entier, texte, etc.)
+   - Assure que les données sont du format attendu
+   - Exemple : Un champ de montant doit être un nombre décimal
+
+2. **Validation Sémantique** : 
+   - Vérification de la cohérence et du sens des données
+   - Exemple : Un montant doit être supérieur à zéro
+   - Exemple : Un nom ne peut pas être vide
+
+### WTForms
+
+Dans Archilog, WTForms est utilisé pour valider les formulaires d'entrée :
+
+```python
+@web_ui.route('/create', methods=['GET', 'POST'])
+def create_entry():
+    form = EntryForm()
+    
+    if form.validate_on_submit():
+        try:
+            # Création de l'entrée avec les données validées
+            models.create_entry(
+                form.name.data, 
+                form.amount.data, 
+                form.category.data or None
+            )
+            logging.info(f"Nouvelle entrée créée: {form.name.data}")
+            flash('Entrée créée avec succès!', 'success')
+            return redirect(url_for('web_ui.home'))
+        except Exception as e:
+            logging.exception(f"Erreur lors de la création d'une entrée")
+            flash(f'Erreur lors de la création: {str(e)}', 'error')
+
+    return render_template('create.html', form=form)
+```
+
+Les validations incluent :
+- `DataRequired()` : Champs obligatoires
+- `NumberRange(min=0)` : Validation de valeurs numériques
+- `Optional()` : Champs facultatifs
+- Messages d'erreur personnalisés
+
+### Logging
+
+Configuration et utilisation du logging pour le suivi et le débogage :
+
+```python
+import logging
+from flask import current_app
+
+# Configuration du logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("archilog.log"),
+        logging.StreamHandler()
+    ]
+)
+
+ @app.errorhandler(500)
+    def handle_internal_error(error):
+        logging.exception("Erreur interne du serveur")
+        flash("Erreur interne du serveur", "error")
+        return render_template("errors/500.html"), 500
+
+# Exemple de log durant l'exécution
+def create_entry():
+    logging.info(f"Nouvelle entrée créée: {form.name.data}")
+    #reste du code
+```
+
+## Installation
+
+```bash
+$ uv add flask-wtf
+```
+
 ## Ressources
 
 - Documentation SQLAlchemy
@@ -382,4 +495,7 @@ def error_test():
 - Documentation Application Factory : https://flask.palletsprojects.com/en/3.0.x/patterns/appfactories/
 - Documentation PDM Scripts : https://pdm.fming.dev/latest/usage/scripts/
 - Documentation Gestion des erreurs : https://flask.palletsprojects.com/en/3.0.x/errorhandling/#error-handlers
+- Documentation WTForms : https://flask-wtf.readthedocs.io/en/1.2.x/quickstart/
+- Documentation Flask-WTF : https://flask-wtf.readthedocs.io/
+- Validation de formulaires Python : https://wtforms.readthedocs.io/
 - Cours et exemples : [https://kathode.neocities.org](https://kathode.neocities.org)
