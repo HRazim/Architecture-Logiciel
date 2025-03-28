@@ -2,7 +2,6 @@
 
 A simple project for educational purpose.
 
-
 # Sommaire
 
 1. [Introduction](#archilog)
@@ -12,6 +11,8 @@ A simple project for educational purpose.
    - [Jinja2](#jinja2)
    - [WTForms](#wtforms)
    - [Flask-HTTPAuth](#flask-httpauth)
+   - [Spectree](#spectree)
+   - [Pydantic](#pydantic)
 3. [Structure du projet](#structure-du-projet)
 4. [Commandes disponibles](#commandes-disponibles)
 5. [Fonctionnalités](#fonctionnalités)
@@ -39,8 +40,13 @@ A simple project for educational purpose.
     - [Configuration Exemple](#configuration-exemple)
     - [Protection des Routes](#protection-des-routes)
     - [Installation](#installation-2)
-12. [Ressources](#ressources)
-
+12. [API HTTP](#api-http)
+    - [Endpoints CRUD](#endpoints-crud)
+    - [Validation des Données](#validation-des-données)
+    - [Gestion des Erreurs](#gestion-des-erreurs)
+    - [Documentation](#documentation)
+    - [Installation](#installation-3)
+13. [Ressources](#ressources)
 
 ## Technologies utilisées
 
@@ -156,6 +162,53 @@ Exemple d'utilisation :
 - Contrôle d'accès aux routes basé sur l'authentification
 - Sécurisation des endpoints avec des mécanismes de validation des utilisateurs
 
+### Spectree
+
+Spectree est un outil de validation d'API et de génération de documentation OpenAPI pour les frameworks web Python.
+
+```python
+from spectree import SpecTree, SecurityScheme
+
+spec = SpecTree(
+    "flask", 
+    title="ArchiLog API",
+    version="1.0.0",
+    security_schemes=[
+        SecurityScheme(
+            name="bearer_token",
+            data={"type": "http", "scheme": "bearer"}
+        )
+    ]
+)
+```
+
+Caractéristiques principales :
+
+- Validation automatique des données d'entrée
+- Génération de documentation Swagger
+- Support de multiple frameworks web
+- Validation des types et contraintes avec Pydantic
+
+### Pydantic
+
+Bibliothèque de validation de données et de paramètres avec typage.
+
+```python
+from pydantic import BaseModel, Field
+
+class EntryModel(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    amount: float = Field(gt=0)
+    category: str | None = Field(default=None)
+```
+
+Fonctionnalités :
+
+- Validation stricte des types
+- Définition de contraintes sur les champs
+- Génération de schémas de données
+- Conversion et validation automatiques
+
 ## Structure du projet
 
 ```
@@ -180,7 +233,7 @@ Exemple d'utilisation :
         │   └── update.html       # Formulaire de modification
         │   ├── api.py            # Blueprint pour l'API et CLI
         │   ├── error_handlers.py # Gestionnaires d'erreurs centralisés
-        │   ├── forms.py          # Form validation
+        │   ├── api_views.py      # Nouveau Blueprint pour l'API et CLI
         │   └── web_ui.py         # Blueprint pour l'interface web
         │
         ├── models.py             # Modèles de données et fonctions d'accès à la BDD
@@ -563,6 +616,89 @@ def create_entry():
 $ pdm add flask-httpauth
 ```
 
+## API HTTP
+
+### Définition
+
+Une API HTTP dans Archilog est définie par :
+
+- URL de base : `/api/users/entries`
+- Verbes HTTP : GET, POST, PUT, DELETE
+- Format de données : JSON
+- Authentification : Token Bearer
+
+### Endpoints CRUD
+
+| Verbe HTTP | Endpoint | Description | Authentification |
+|-----------|----------|-------------|-----------------|
+| GET | `/api/users/entries` | Récupérer toutes les entrées | Token requis |
+| GET | `/api/users/entries/<id>` | Récupérer une entrée spécifique | Token requis |
+| POST | `/api/users/entries` | Créer une nouvelle entrée | Token requis (admin) |
+| PUT | `/api/users/entries/<id>` | Mettre à jour une entrée | Token requis (admin) |
+| DELETE | `/api/users/entries/<id>` | Supprimer une entrée | Token requis (admin) |
+
+### Exemple de Requête
+
+```bash
+# Récupérer toutes les entrées
+curl -X GET http://localhost:5000/api/users/entries \
+     -H "Authorization: Bearer admin_token"
+
+# Créer une nouvelle entrée
+curl -X POST http://localhost:5000/api/users/entries \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer admin_token" \
+     -d '{
+         "name": "Salaire",
+         "amount": 2000.50,
+         "category": "Revenus"
+     }'
+```
+
+### Validation des Données
+
+Chaque endpoint utilise Pydantic et Spectree pour valider :
+
+- Types de données
+- Longueur des chaînes
+- Plages de valeurs numériques
+- Champs obligatoires/optionnels
+
+```python
+@api_views.route('/entries', methods=['POST'])
+@spec.validate(json=EntryModel, tags=["entries"])
+@token_auth.login_required
+def create_entry(json: EntryModel):
+    entry = models.create_entry(json.name, json.amount, json.category)
+    return jsonify(entry), 201
+```
+
+### Gestion des Erreurs
+
+- Validation des données
+- Gestion des authentifications
+- Contrôle des autorisations
+- Codes de statut HTTP appropriés
+
+### Documentation
+
+- Swagger UI disponible à `/apidoc/swagger`
+- Documentation automatique générée
+- Schémas de requête et réponse clairement définis
+
+### Sécurité
+
+- Authentification par token
+- Validation stricte des entrées
+- Contrôle d'accès basé sur les rôles
+- Protection contre les injections
+
+### Installation
+
+```bash
+$ pdm add spectree
+```
+
 ## Ressources
 
 - Documentation SQLAlchemy
@@ -577,4 +713,6 @@ $ pdm add flask-httpauth
 - Validation de formulaires Python : https://wtforms.readthedocs.io/
 - [flask-httpauth Documentation](https://flask-httpauth.readthedocs.io/)
 - [Werkzeug Security Documentation](https://werkzeug.palletsprojects.com/en/3.0.x/utils/#module-werkzeug.security)
+- Pydantic : https://docs.pydantic.dev/latest/
+- Spectree : https://github.com/0b01001001/spectree
 - Cours et exemples : [https://kathode.neocities.org](https://kathode.neocities.org)
