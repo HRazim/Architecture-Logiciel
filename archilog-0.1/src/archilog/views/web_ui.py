@@ -123,7 +123,7 @@ def delete_entry(id):
     return redirect(url_for('web_ui.home'))
 
 @web_ui.route('/export-csv')
-@auth.login_required(role=['admin'])
+@auth.login_required(role=['admin','user'])
 def export_csv():
     try:
         csv_content = services.export_to_csv().getvalue()
