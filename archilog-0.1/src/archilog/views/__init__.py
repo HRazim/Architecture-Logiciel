@@ -13,12 +13,12 @@ def create_app():
     
     # Enregistrement des blueprints
     from archilog.views.web_ui import web_ui
-    from archilog.views.api import api
-    from archilog.views.api_views import api_views, spec, register_spec
+    from archilog.views.cmd import cmd
+    from archilog.views.api import api, spec, register_spec
     
     app.register_blueprint(web_ui)
+    app.register_blueprint(cmd)
     app.register_blueprint(api)
-    app.register_blueprint(api_views)
     
     # Enregistrement du schéma Spectree
     register_spec(app)

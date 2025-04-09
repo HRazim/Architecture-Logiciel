@@ -1,71 +1,148 @@
 import uuid
-import io
-import click
 from flask import Blueprint, jsonify, request
+from flask_httpauth import HTTPTokenAuth
+from pydantic import BaseModel, Field
+from spectree import SpecTree, SecurityScheme
 
 import archilog.models as models
 import archilog.services as services
 
-# Blueprint pour l'API et les commandes CLI
-api = Blueprint("api", __name__, url_prefix="/api", cli_group="archilog")
+# Création du Blueprint pour l'API
+api = Blueprint("api", __name__, url_prefix="/api/users")
 
-# Routes API - facultatif, mais cela montre comment séparer les fonctionnalités
+# Configuration de Spectree
+spec = SpecTree(
+    "flask", 
+    title="ArchiLog API",
+    version="1.0.0",
+    security_schemes=[
+        SecurityScheme(
+            name="bearer_token",
+            data={"type": "http", "scheme": "bearer"}
+        )
+    ],
+    security=[{"bearer_token": []}]
+)
+
+# Authentification par token
+token_auth = HTTPTokenAuth(scheme='Bearer')
+
+# Simulation d'une base de tokens
+valid_tokens = {
+    "admin_token": "admin",
+    "user_token": "user"
+}
+
+@token_auth.verify_token
+def verify_token(token):
+    """Vérification du token"""
+    if token in valid_tokens:
+        return valid_tokens[token]
+    return None
+
+# Modèles de validation Pydantic
+class EntryModel(BaseModel):
+    name: str = Field(min_length=2, max_length=100, description="Nom de l'entrée")
+    amount: float = Field(gt=0, description="Montant de l'entrée")
+    category: str | None = Field(default=None, description="Catégorie optionnelle")
+
+class EntryResponse(EntryModel):
+    id: str
+    
+# CRUD Operations avec validation Spectree
 @api.route('/entries', methods=['GET'])
+@spec.validate(tags=["entries"])
+@token_auth.login_required
 def get_entries():
+    """Récupérer toutes les entrées"""
     entries = models.get_all_entries()
-    return jsonify([{
+    return jsonify([
+        {
+            'id': entry.id.hex,
+            'name': entry.name,
+            'amount': entry.amount,
+            'category': entry.category
+        } for entry in entries
+    ])
+
+@api.route('/entries', methods=['POST'])
+@spec.validate(json=EntryModel, tags=["entries"])
+@token_auth.login_required(role="admin")
+def create_entry(json: EntryModel):
+    """Créer une nouvelle entrée"""
+    entry = models.create_entry(json.name, json.amount, json.category)
+    return jsonify({
         'id': entry.id.hex,
         'name': entry.name,
         'amount': entry.amount,
         'category': entry.category
-    } for entry in entries])
+    }), 201
 
-# Commandes CLI
-@api.cli.command("init-db")
-def init_db():
-    models.init_db()
-    click.echo("Base de données initialisée avec succès.")
-
-@api.cli.command("create")
-@click.option("-n", "--name", prompt="Name")
-@click.option("-a", "--amount", type=float, prompt="Amount")
-@click.option("-c", "--category", default=None)
-def create(name: str, amount: float, category: str | None):
-    models.create_entry(name, amount, category)
-    click.echo(f"Entrée créée: {name}, {amount}, {category}")
-
-@api.cli.command("get")
-@click.option("--id", required=True, type=click.UUID)
-def get(id: uuid.UUID):
+@api.route('/entries/<uuid:id>', methods=['GET'])
+@spec.validate(tags=["entries"])
+@token_auth.login_required
+def get_entry(id: uuid.UUID):
+    """Récupérer une entrée par son ID"""
     entry = models.get_entry(id)
-    click.echo(entry)
+    return jsonify({
+        'id': entry.id.hex,
+        'name': entry.name,
+        'amount': entry.amount,
+        'category': entry.category
+    })
 
-@api.cli.command("get-all")
-@click.option("--as-csv", is_flag=True, help="Output a CSV string.")
-def get_all(as_csv: bool):
-    if as_csv:
-        click.echo(services.export_to_csv().getvalue())
-    else:
-        for entry in models.get_all_entries():
-            click.echo(entry)
+@api.route('/entries/<uuid:id>', methods=['PUT'])
+@spec.validate(json=EntryModel, tags=["entries"])
+@token_auth.login_required(role="admin")
+def update_entry(id: uuid.UUID, json: EntryModel):
+    """Mettre à jour une entrée"""
+    models.update_entry(id, json.name, json.amount, json.category)
+    return jsonify({
+        'id': id.hex,
+        'name': json.name,
+        'amount': json.amount,
+        'category': json.category
+    })
 
-@api.cli.command("import-csv")
-@click.argument("csv_file", type=click.File("r"))
-def import_csv_cmd(csv_file):
-    services.import_from_csv(csv_file)
-    click.echo("Import CSV terminé.")
-
-@api.cli.command("update")
-@click.option("--id", type=click.UUID, required=True)
-@click.option("-n", "--name", required=True)
-@click.option("-a", "--amount", type=float, required=True)
-@click.option("-c", "--category", default=None)
-def update(id: uuid.UUID, name: str, amount: float, category: str | None):
-    models.update_entry(id, name, amount, category)
-    click.echo(f"Entrée mise à jour: {id}, {name}, {amount}, {category}")
-
-@api.cli.command("delete")
-@click.option("--id", required=True, type=click.UUID)
-def delete(id: uuid.UUID):
+@api.route('/entries/<uuid:id>', methods=['DELETE'])
+@spec.validate(tags=["entries"])
+@token_auth.login_required(role="admin")
+def delete_entry(id: uuid.UUID):
+    """Supprimer une entrée"""
     models.delete_entry(id)
-    click.echo(f"Entrée avec ID {id} supprimée.")
+    return '', 204
+
+# Routes pour l'import/export CSV
+@api.route('/export', methods=['GET'])
+@spec.validate(tags=["import-export"])
+@token_auth.login_required
+def export_csv():
+    """Exporter les données en CSV"""
+    csv_content = services.export_to_csv().getvalue()
+    return csv_content, 200, {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': 'attachment; filename=entries.csv'
+    }
+
+@api.route('/import', methods=['POST'])
+@spec.validate(tags=["import-export"])
+@token_auth.login_required(role="admin")
+def import_csv():
+    """Importer des données depuis un CSV"""
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['file']
+    if file.filename == '' or not file.filename.endswith('.csv'):
+        return jsonify({"error": "Invalid file"}), 400
+    
+    try:
+        stream = io.StringIO(file.stream.read().decode("UTF-8"), newline=None)
+        services.import_from_csv(stream)
+        return jsonify({"message": "CSV importé avec succès"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Enregistrement du schéma Spectree
+def register_spec(app):
+    spec.register(app)
