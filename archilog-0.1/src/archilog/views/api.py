@@ -10,7 +10,7 @@ from spectree import BaseFile
 # Création du Blueprint pour l'API
 api = Blueprint("api", __name__, url_prefix="/api/users")
 
-# Configuration de Spectree pour générer la documentation OpenAPI
+# Configuration de Spectree
 spec = SpecTree(
     "flask",
     title="ArchiLog API",
@@ -25,10 +25,10 @@ spec = SpecTree(
 # Authentification par token
 token_auth = HTTPTokenAuth(scheme='Bearer')
 
-# Simulation d'une base de tokens (admin, user, etc.)
+# Tokens valides pour l'authentification
 valid_tokens = {
-    "admin_token": "admin",  # admin
-    "user_token": "user"     # user
+    "admin_token": "admin",  
+    "user_token": "user"     
 }
 
 @token_auth.verify_token
@@ -50,9 +50,8 @@ class EntryResponse(EntryModel):
     id: str
 
 
-#
+
 # Routes CRUD
-#
 @api.route('/entries', methods=['GET'])
 @spec.validate(tags=["entries"])
 @token_auth.login_required

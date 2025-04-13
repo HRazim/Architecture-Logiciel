@@ -231,9 +231,9 @@ Fonctionnalités :
         │   │   └── 500.html      # Erreur serveur
         │   ├── home.html         # Page d'accueil
         │   └── update.html       # Formulaire de modification
-        │   ├── api.py            # Blueprint pour l'API et CLI
+        │   ├── cmd.py            # Commande CLI
         │   ├── error_handlers.py # Gestionnaires d'erreurs centralisés
-        │   ├── api_views.py      # Nouveau Blueprint pour l'API et CLI
+        │   ├── api.py            # API 
         │   └── web_ui.py         # Blueprint pour l'interface web
         │
         ├── models.py             # Modèles de données et fonctions d'accès à la BDD
@@ -279,19 +279,25 @@ Exemples :
 
 ## Installation
 
-1. Installez les dépendances avec PDM:
+1. Installez PDM :
    ```
-   pdm add flask sqlalchemy python-dotenv
+   pip install pdm
+   pdm install
    ```
 
-2. Créez un fichier `dev.env` à la racine du projet:
+2. Installez les dépendances avec PDM:
+   ```
+   pdm add click flask sqlalchemy
+   ```
+
+3. Créez un fichier `dev.env` à la racine du projet:
    ```
    ARCHILOG_DATABASE_URL=sqlite:///data.db
    ARCHILOG_DEBUG=True
    ARCHILOG_FLASK_SECRET_KEY=your_secret_key_here
    ```
 
-3. Initialisez la base de données:
+4. Initialisez la base de données:
    ```
    pdm run flask --app archilog.views:create_app archilog init-db
    ```
@@ -338,6 +344,7 @@ Puis ouvrez http://localhost:5000 dans votre navigateur.
 ### Modèles de données (models.py)
 
 Le module `models.py` définit la structure de la base de données et fournit des fonctions pour :
+
 - Initialiser la base de données
 - Créer, lire, mettre à jour et supprimer des entrées
 - Gérer les connexions à la base de données avec un gestionnaire de contexte
@@ -351,8 +358,10 @@ Le module `services.py` contient des fonctions utilitaires pour :
 ### Blueprints
 
 Les blueprints permettent d'organiser l'application en modules réutilisables :
+
+- `cmd.py` Gère les commandes CLI
 - `web_ui.py` : Gère l'interface utilisateur web
-- `api.py` : Gère l'API et les commandes CLI
+- `api.py` : Gère l'API 
 
 ## Industrialisation
 
@@ -431,6 +440,7 @@ config = Config(
 ### Utilisation de dotenv
 
 Pour chaque environnement, nous pouvons avoir une configuration spécifique :
+
 * `dev.env` : Développement
 * `testing.env` : Tests
 * `demo.env` : Démonstration
@@ -512,29 +522,19 @@ Nous utilisons deux types principaux de validation des données :
 Dans Archilog, WTForms est utilisé pour valider les formulaires d'entrée :
 
 ```python
-@web_ui.route('/create', methods=['GET', 'POST'])
-def create_entry():
-    form = EntryForm()
-    
-    if form.validate_on_submit():
-        try:
-            # Création de l'entrée avec les données validées
-            models.create_entry(
-                form.name.data, 
-                form.amount.data, 
-                form.category.data or None
-            )
-            logging.info(f"Nouvelle entrée créée: {form.name.data}")
-            flash('Entrée créée avec succès!', 'success')
-            return redirect(url_for('web_ui.home'))
-        except Exception as e:
-            logging.exception(f"Erreur lors de la création d'une entrée")
-            flash(f'Erreur lors de la création: {str(e)}', 'error')
-
-    return render_template('create.html', form=form)
+# Formulaire de Validation
+class EntryForm(FlaskForm):
+    name = StringField("Nom", validators=[DataRequired(message="Le nom est obligatoire")])
+    amount = FloatField("Montant", validators=[
+        DataRequired(message="Le montant est obligatoire"),
+        NumberRange(min=0, message="Le montant doit être positif")
+    ])
+    category = StringField("Catégorie", validators=[Optional()])
+    submit = SubmitField("Enregistrer")
 ```
 
 Les validations incluent :
+
 - `DataRequired()` : Champs obligatoires
 - `NumberRange(min=0)` : Validation de valeurs numériques
 - `Optional()` : Champs facultatifs
@@ -593,8 +593,9 @@ $ pdm add flask-wtf
 ### Contrôle d'Accès Basé sur les Rôles (RBAC)
 
 Deux rôles principaux sont implémentés :
-- **admin** : Accès complet (lecture, création, modification, suppression)
-- **user** : Accès limité en lecture seule
+
+- **admin** : Accès complet (lecture, création, modification, suppression, importation et exporrtation)
+- **user** : Accès limité en lecture et expotation des données
 
 ### Protection des Routes
 
@@ -678,7 +679,7 @@ def create_entry(json: EntryModel):
 - Validation des données
 - Gestion des authentifications
 - Contrôle des autorisations
-- Codes de statut HTTP appropriés
+- Codes de statut HTTP appropriés (200, 404...)
 
 ### Documentation
 
@@ -696,7 +697,8 @@ def create_entry(json: EntryModel):
 ### Installation
 
 ```bash
-$ pdm add spectree
+pdm add spectree
+pdm add pydantic
 ```
 
 ## Ressources
